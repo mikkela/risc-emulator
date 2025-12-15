@@ -1,8 +1,7 @@
-use std::path::Path;
 use crate::boot::BOOTLOADER;
-use crate::bus::BusResult;
 use crate::bus::io_bus::IoBus;
 use crate::bus::system_bus::SystemBus;
+use crate::bus::BusResult;
 use crate::cpu::Cpu;
 use crate::devices;
 use crate::devices::disk::Disk;
@@ -56,7 +55,7 @@ impl Machine {
     ) -> Self {
         use crate::{
             bus::{io_bus::IoBus, system_bus::SystemBus},
-            devices::{input::Input, switches::Switches, timer::Timer},
+            devices::{switches::Switches, timer::Timer},
             memory::{framebuffer::Damage, ram::Ram, rom::Rom},
         };
 
@@ -101,7 +100,7 @@ impl Machine {
 
     pub fn attach_disk(&mut self, path: &str) -> BusResult<()> {
         let disk = Disk::new(Some(path))?;
-        self.bus.io.set_spi(1, Box::new(disk));
+        let _ =self.bus.io.set_spi(1, Box::new(disk));
         Ok(())
     }
 }

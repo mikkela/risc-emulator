@@ -43,7 +43,7 @@ impl ClipboardDevice {
         if txt.is_empty() { return 0; }
 
         // Oberon forventer CR, og C-koden normaliserer CRLF
-        let mut bytes = txt.into_bytes();
+        let bytes = txt.into_bytes();
 
         // Hvis du vil lave samme CRLF-justering som C:
         // C: mindsker reported length hvis CRLF
