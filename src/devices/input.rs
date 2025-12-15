@@ -1,4 +1,5 @@
 use crate::{bus::BusResult, devices::IoDevice};
+use crate::bus::BusError;
 
 #[derive(Debug, Default)]
 pub struct Input {
@@ -17,38 +18,42 @@ impl Input {
         }
     }
 
-    pub fn mouse_button(&mut self, button: i32, down: bool) {
+    pub fn mouse_button(&mut self, button: u32, down: bool) {
         if (1..4).contains(&button) {
-            let bit = 1u32 << (27 - (button as u32));
+            let bit = 1u32 << (27 - button);
             if down { self.mouse |= bit; } else { self.mouse &= !bit; }
         }
     }
 
-    pub fn keyboard_input(&mut self, scancodes: &[u8]) {
-        let free = self.key_buf.len().saturating_sub(self.key_cnt);
-        if scancodes.len() <= free {
-            self.key_buf[self.key_cnt..self.key_cnt + scancodes.len()].copy_from_slice(scancodes);
-            self.key_cnt += scancodes.len();
+    pub fn keyboard_input(&mut self, bytes: &[u8]) -> BusResult<()>{
+        if self.key_cnt + bytes.len() > self.key_buf.len() {
+            return Err(BusError::Device("keyboard buffer full".into()));
         }
+        let dst = &mut self.key_buf[self.key_cnt .. self.key_cnt + bytes.len()];
+        dst.copy_from_slice(bytes);
+        self.key_cnt += bytes.len();
+        Ok(())
     }
 
     fn read_mouse_and_kb_status(&self) -> u32 {
-        let mut v = self.mouse;
+        let mut m = self.mouse;
         if self.key_cnt > 0 {
-            v |= 0x1000_0000;
+            m |= 0x1000_0000; // keyboard ready
         }
-        v
+        m
     }
 
-    fn read_keyboard_data(&mut self) -> u32 {
-        if self.key_cnt > 0 {
-            let sc = self.key_buf[0];
-            self.key_cnt -= 1;
-            self.key_buf.copy_within(1..1 + self.key_cnt, 0);
-            sc as u32
-        } else {
-            0
+    pub(crate) fn read_keyboard_data(&mut self) -> u32 {
+        if self.key_cnt == 0 {
+            return 0;
         }
+        let sc = self.key_buf[0];
+        // shift buffer left
+        for i in 1..self.key_cnt {
+            self.key_buf[i - 1] = self.key_buf[i];
+        }
+        self.key_cnt -= 1;
+        sc as u32
     }
 }
 

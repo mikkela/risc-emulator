@@ -56,7 +56,8 @@ impl EmuApp {
         let fb_w = 1024;
         let fb_h = 768;
 
-        let machine = Machine::new(fb_w as i32, fb_h as i32);
+        let mut machine = Machine::new(fb_w as i32, fb_h as i32);
+        machine.attach_disk("oberon.dsk");
 
         Self {
             emu: EmuState {

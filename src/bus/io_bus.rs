@@ -12,7 +12,7 @@ pub struct IoBus {
     pub switches: Box<dyn IoDevice>,
     pub serial: Option<Box<dyn IoDevice>>,
     pub spi: [Option<Box<dyn SpiDevice>>; 4],
-    pub input: Box<dyn IoDevice>,
+    pub input: crate::devices::input::Input,
     pub clipboard: Option<Box<dyn IoDevice>>,
     pub leds: Option<Box<dyn IoDevice>>,
 
@@ -24,7 +24,6 @@ impl IoBus {
         io_start: u32,
         timer: Box<dyn IoDevice>,
         switches: Box<dyn IoDevice>,
-        input: Box<dyn IoDevice>,
     ) -> Self {
         Self {
             io_start,
@@ -32,7 +31,7 @@ impl IoBus {
             switches,
             serial: None,
             spi: [None, None, None, None],
-            input,
+            input: crate::devices::input::Input::default(),
             clipboard: None,
             leds: None,
             spi_selected: 0,
@@ -113,6 +112,19 @@ impl IoBus {
 
             _ => Ok(()),
         }
+    }
+
+    pub fn set_spi(&mut self, index: usize, dev: Box<dyn SpiDevice>) -> BusResult<()> {
+        if index == 1 || index == 2 {
+            self.spi[index] = Some(dev);
+            Ok(())
+        } else {
+            Err(BusError::Device(format!("SPI index {index} not supported (only 1 or 2)")))
+        }
+    }
+
+    fn current_spi_mut(&mut self) -> Option<&mut Box<dyn SpiDevice>> {
+        self.spi.get_mut(self.spi_selected as usize)?.as_mut()
     }
 }
 

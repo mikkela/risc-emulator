@@ -2,7 +2,8 @@ pub mod timer;
 pub mod switches;
 pub mod input;
 pub mod spi;
-mod disk;
+pub mod disk;
+pub mod clipboard;
 
 use crate::bus::BusResult;
 

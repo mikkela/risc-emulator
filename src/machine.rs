@@ -1,8 +1,11 @@
+use std::path::Path;
 use crate::boot::BOOTLOADER;
+use crate::bus::BusResult;
 use crate::bus::io_bus::IoBus;
 use crate::bus::system_bus::SystemBus;
 use crate::cpu::Cpu;
 use crate::devices;
+use crate::devices::disk::Disk;
 use crate::memory::framebuffer::Damage;
 use crate::memory::ram::Ram;
 use crate::memory::rom::Rom;
@@ -25,8 +28,7 @@ impl Machine {
 
         let timer = Box::new(devices::timer::Timer::default());
         let switches = Box::new(devices::switches::Switches::default());
-        let input = Box::new(devices::input::Input::default()); // lav den som i C (mouse+keybuf)
-        let io = IoBus::new(IO_START, timer, switches, input);
+        let io = IoBus::new(IO_START, timer, switches);
 
         let bus = SystemBus::new(
             DEFAULT_MEM_SIZE,
@@ -63,9 +65,8 @@ impl Machine {
 
         let timer = Box::new(Timer::default());
         let switches = Box::new(Switches::default());
-        let input = Box::new(Input::default());
 
-        let io = IoBus::new(crate::machine::IO_START, timer, switches, input);
+        let io = IoBus::new(crate::machine::IO_START, timer, switches);
 
         let bus = SystemBus::new(
             mem_size,
@@ -82,5 +83,25 @@ impl Machine {
         cpu.reset();
 
         Self { cpu, bus }
+    }
+}
+
+impl Machine {
+    pub fn mouse_moved(&mut self, x: i32, y: i32) {
+        self.bus.io.input.mouse_moved(x, y);
+    }
+
+    pub fn mouse_button(&mut self, button: u32, down: bool) {
+        self.bus.io.input.mouse_button(button, down);
+    }
+
+    pub fn keyboard_ps2(&mut self, bytes: &[u8]) {
+        let _ = self.bus.io.input.keyboard_input(bytes);
+    }
+
+    pub fn attach_disk(&mut self, path: &str) -> BusResult<()> {
+        let disk = Disk::new(Some(path))?;
+        self.bus.io.set_spi(1, Box::new(disk));
+        Ok(())
     }
 }
