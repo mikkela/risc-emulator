@@ -9,6 +9,48 @@ pub fn show(ctx: &egui::Context, app: &mut EmuApp) {
                 app.emu.running = !app.emu.running;
             }
 
+            ui.menu_button("File", |ui| {
+                if ui.button("Attach Disk 1 (SPI1)…").clicked() {
+                    ui.close_menu();
+                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                        if let Err(e) = app.emu.machine.attach_disk (1, &path) {
+                            app.emu.last_error = Some(format!("Attach disk1 failed: {e:?}"));
+                        } else {
+                            app.emu.disk1_path = Some(path);
+                        }
+                    }
+                }
+                if ui.button("Eject Disk 1 (SPI1)…").clicked() {
+                    ui.close_menu();
+                    if let Err(e) = app.emu.machine.eject_disk(1) {
+                        app.emu.last_error = Some(format!("Eject disk1 failed: {e:?}"));
+                    } else {
+                        app.emu.disk1_path = None;
+                    }
+                }
+
+                ui.separator();
+
+                if ui.button("Attach Disk 2 (SPI2)…").clicked() {
+                    ui.close_menu();
+                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                        if let Err(e) = app.emu.machine.attach_disk (2, &path) {
+                            app.emu.last_error = Some(format!("Attach disk2 failed: {e:?}"));
+                        } else {
+                            app.emu.disk2_path = Some(path);
+                        }
+                    }
+                }
+                if ui.button("Eject Disk 2 (SPI2)…").clicked() {
+                    ui.close_menu();
+                    if let Err(e) = app.emu.machine.eject_disk(2) {
+                        app.emu.last_error = Some(format!("Eject disk2 failed: {e:?}"));
+                    } else {
+                        app.emu.disk2_path = None;
+                    }
+                }
+            });
+
             if ui.button("Step").clicked() {
                 app.step_instructions(1);
                 if app.ui.follow_pc {
@@ -52,6 +94,16 @@ pub fn show(ctx: &egui::Context, app: &mut EmuApp) {
                     .speed(10.0)
                     .range(1..=50_000_000),
             );
+
+            ui.separator();
+            ui.monospace(format!(
+                "D1={}  D2={}",
+                app.emu.disk1_path.as_ref().and_then(|p| p.file_name()).and_then(|s| s.to_str()).unwrap_or("-"),
+                app.emu.disk2_path.as_ref().and_then(|p| p.file_name()).and_then(|s| s.to_str()).unwrap_or("-"),
+            ));
+            if let Some(err) = &app.emu.last_error {
+                ui.colored_label(egui::Color32::LIGHT_RED, err);
+            }
         });
     });
 }

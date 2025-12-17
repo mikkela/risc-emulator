@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
-
+use std::path::Path;
 use crate::bus::{BusError, BusResult};
 use crate::devices::spi::SpiDevice;
 
@@ -27,7 +27,7 @@ pub struct Disk {
 }
 
 impl Disk {
-    pub fn new(filename: Option<&str>) -> BusResult<Self> {
+    pub fn new(filename: Option<&Path>) -> BusResult<Self> {
         let mut disk = Self {
             state: DiskState::DiskCommand,
             file: None,
@@ -39,12 +39,16 @@ impl Disk {
             tx_idx: 0,
         };
 
-        if let Some(name) = filename {
+        if let Some(path) = filename {
             let mut f = File::options()
                 .read(true)
                 .write(true)
-                .open(name)
-                .map_err(|e| BusError::Device(format!("Can't open file \"{name}\": {e}")))?;
+                .open(path)
+                .map_err(|e| BusError::Device(format!(
+                    "Can't open file \"{}\": {}",
+                    path.display(),
+                    e
+                )))?;
 
             // Check for filesystem-only image, starting directly at sector 1 (DiskAdr 29)
             let mut tmp = [0u32; 128];

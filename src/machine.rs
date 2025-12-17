@@ -1,7 +1,8 @@
+use std::path::Path;
 use crate::boot::BOOTLOADER;
 use crate::bus::io_bus::IoBus;
 use crate::bus::system_bus::SystemBus;
-use crate::bus::BusResult;
+use crate::bus::{BusError, BusResult};
 use crate::cpu::Cpu;
 use crate::devices;
 use crate::devices::disk::Disk;
@@ -98,9 +99,20 @@ impl Machine {
         let _ = self.bus.io.input.keyboard_input(bytes);
     }
 
-    pub fn attach_disk(&mut self, path: &str) -> BusResult<()> {
+    pub fn attach_disk(&mut self, slot: usize, path: &Path) -> BusResult<()> {
+        if slot != 1 && slot != 2 {
+            return Err(BusError::Device(format!("disk slot must be 1 or 2, got {slot}")));
+        }
         let disk = Disk::new(Some(path))?;
-        let _ =self.bus.io.set_spi(1, Box::new(disk));
+        self.bus.io.set_spi(slot, Box::new(disk))?;
+        Ok(())
+    }
+
+    pub fn eject_disk(&mut self, slot: usize) -> BusResult<()> {
+        if slot != 1 && slot != 2 {
+            return Err(BusError::Device(format!("disk slot must be 1 or 2, got {slot}")));
+        }
+        self.bus.io.clear_spi(slot)?; // vi laver den lige nedenfor
         Ok(())
     }
 }

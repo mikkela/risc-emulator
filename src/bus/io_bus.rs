@@ -123,8 +123,13 @@ impl IoBus {
         }
     }
 
-    fn current_spi_mut(&mut self) -> Option<&mut Box<dyn SpiDevice>> {
-        self.spi.get_mut(self.spi_selected as usize)?.as_mut()
+    pub fn clear_spi(&mut self, index: usize) -> BusResult<()> {
+        if index == 1 || index == 2 {
+            self.spi[index] = None;
+            Ok(())
+        } else {
+            Err(BusError::Device(format!("SPI index {index} not supported")))
+        }
     }
 }
 

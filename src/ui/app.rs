@@ -1,7 +1,7 @@
 use std::collections::HashSet;
-
+use std::path::{Path, PathBuf};
 use eframe::egui;
-
+use crate::bus::BusResult;
 use crate::Machine;
 
 use super::{cpu_panel, debugger, framebuffer, topbar};
@@ -20,6 +20,9 @@ pub(crate) struct EmuState {
     pub(crate) cycles_per_frame: u32,
     pub(crate) run_to_target: Option<u32>,
     pub(crate) breakpoints: HashSet<u32>,
+    pub disk1_path: Option<std::path::PathBuf>,
+    pub disk2_path: Option<std::path::PathBuf>,
+    pub last_error: Option<String>,
 }
 
 pub(crate) struct UiState {
@@ -52,42 +55,75 @@ pub(crate) enum RightTab {
 }
 
 impl EmuApp {
-    pub fn new() -> Self {
-        let fb_w = 1024;
-        let fb_h = 768;
+    pub fn new(fb_w: usize, fb_h: usize, disk1: Option<PathBuf>, disk2: Option<PathBuf>) -> Self {
+        /*let fb_w = 1024;
+        let fb_h = 768;*/
 
         let mut machine = Machine::new(fb_w as i32, fb_h as i32);
-        let _ = machine.attach_disk("oberon.dsk");
 
-        Self {
-            emu: EmuState {
-                machine,
-                running: true,
-                cycles_per_frame: CPU_HZ / FPS,
-                run_to_target: None,
-                breakpoints: HashSet::new(),
-            },
-            ui: UiState {
-                tex: None,
-                fb_rgba: vec![egui::Color32::BLACK; fb_w * fb_h],
-                fb_w,
-                fb_h,
+        let mut app =
+            Self {
+                emu: EmuState {
+                    machine,
+                    running: false,
+                    cycles_per_frame: CPU_HZ / FPS,
+                    run_to_target: None,
+                    breakpoints: HashSet::new(),
+                    disk1_path: None,
+                    disk2_path: None,
+                    last_error: None,
 
-                // Solarized-ish (0xRRGGBB)
-                black: egui::Color32::from_rgb(0x65, 0x7b, 0x83),
-                white: egui::Color32::from_rgb(0xfd, 0xf6, 0xe3),
+                },
+                ui: UiState {
+                    tex: None,
+                    fb_rgba: vec![egui::Color32::BLACK; fb_w * fb_h],
+                    fb_w,
+                    fb_h,
 
-                step_n: 1,
-                disasm_before: 20,
-                disasm_after: 40,
-                follow_pc: true,
-                disasm_scroll_to_pc: true,
-                cursor_pc: None,
+                    // Solarized-ish (0xRRGGBB)
+                    black: egui::Color32::from_rgb(0x65, 0x7b, 0x83),
+                    white: egui::Color32::from_rgb(0xfd, 0xf6, 0xe3),
 
-                right_tab: RightTab::Cpu,
-            },
+                    step_n: 1,
+                    disasm_before: 20,
+                    disasm_after: 40,
+                    follow_pc: true,
+                    disasm_scroll_to_pc: true,
+                    cursor_pc: None,
+
+                    right_tab: RightTab::Cpu,
+                },
+            };
+
+        if let Some(p) = disk1 {
+            if let Err(e) = app.attach_disk(1, &p) {
+                app.emu.last_error = Some(format!("Attach disk1 failed: {e:?}"));
+            } else {
+                app.emu.disk1_path = Some(p);
+            }
         }
+        if let Some(p) = disk2 {
+            if let Err(e) = app.attach_disk(2, &p) {
+                app.emu.last_error = Some(format!("Attach disk2 failed: {e:?}"));
+            } else {
+                app.emu.disk2_path = Some(p);
+            }
+        }
+
+        app
+
     }
+
+    fn attach_disk(&mut self, slot: usize, path: &Path) -> BusResult<()> {
+        self.emu.machine.attach_disk(slot, path)?;
+        match slot {
+            1 => self.emu.disk1_path = Some(path.to_path_buf()),
+            2 => self.emu.disk2_path = Some(path.to_path_buf()),
+            _ => {}
+        }
+        Ok(())
+    }
+
 
     pub(crate) fn pc_aligned(&self) -> u32 {
         self.emu.machine.cpu.view().pc & !3
